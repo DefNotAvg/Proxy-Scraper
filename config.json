@@ -1,0 +1,10 @@
+{
+	"proxySites": [
+		"https://www.us-proxy.org/"
+	],
+	"testSite": "https://www.google.com/",
+	"totalProxies": 50,
+	"output": "results.txt",
+	"timeout": 5,
+	"width": 50
+}
