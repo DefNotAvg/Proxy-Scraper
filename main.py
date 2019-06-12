@@ -5,6 +5,7 @@ import math
 import os
 import requests
 import json
+import random
 from bs4 import BeautifulSoup
 from time import sleep, time
 
@@ -82,13 +83,14 @@ def header():
 
 def gather_proxies(site):
 	headers = {
-		'authority': proxy_sites[site],
 		'upgrade-insecure-requests': '1',
 		'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36',
 		'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
 		'accept-encoding': 'gzip, deflate',
 		'accept-language': 'en-US,en;q=0.9',
 	}
+	if proxy_sites[site]:
+		headers['authority'] = proxy_sites[site]
 	try:
 		response = requests.get(site, headers=headers)
 	except requests.exceptions.RequestException:
@@ -97,6 +99,8 @@ def gather_proxies(site):
 		return gather_free_proxy_list(response)
 	elif site == 'https://www.socks-proxy.net/':
 		return gather_free_proxy_list(response, True)
+	elif site == 'http://proxy-daily.com/':
+		return gather_proxy_daily(response)
 
 def gather_free_proxy_list(response, socks=False):
 	soup = BeautifulSoup(response.content, 'html.parser')
@@ -109,12 +113,26 @@ def gather_free_proxy_list(response, socks=False):
 	else:
 		return ['{}:{}'.format(address, port) for address, port in zip(addresses, ports)]
 
+def gather_proxy_daily(response):
+	result = []
+	soup = BeautifulSoup(response.content, 'html.parser')
+	tables = [item.get_text() for item in soup.find_all('div') if item.get('style') and item.get('style').startswith('border-radius:10px;white-space')]
+	for i in range(0, len(tables)):
+		table = tables[i]
+		if i == 0:
+			proxies = [item for item in table.split('\n') if item != '']
+		else:
+			proxies = ['socks{}://{}'.format(str(i + 3), item) for item in table.split('\n') if item != '']
+		result.extend(proxies)
+	return result
+
 header()
 proxies = []
 print('{}\r'.format(center('Gathering proxies...', display=False)), end='')
 for site in proxy_sites.keys():
 	proxies.extend(gather_proxies(site))
 proxies = list(set(proxies))
+random.shuffle(proxies)
 if proxies:
 	if len(proxies) == 1:
 		center('Successfully gathered 1 proxy :(')

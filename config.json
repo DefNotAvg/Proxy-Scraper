@@ -5,7 +5,8 @@
 		"https://www.sslproxies.org/": "www.sslproxies.org",
 		"https://free-proxy-list.net/anonymous-proxy.html": "free-proxy-list.net",
 		"https://free-proxy-list.net/uk-proxy.html": "free-proxy-list.net",
-		"https://www.socks-proxy.net/": "www.socks-proxy.net"
+		"https://www.socks-proxy.net/": "www.socks-proxy.net",
+		"http://proxy-daily.com/": null
 	},
 	"freeProxyList": [
 		"https://free-proxy-list.net/",
