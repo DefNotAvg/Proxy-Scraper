@@ -19,6 +19,7 @@ def load_from_json(file):
 
 config = load_from_json('config.json')
 proxy_sites = config['proxySites']
+free_proxy_list = config['freeProxyList']
 test_site = config['testSite']
 total_proxies = config['totalProxies']
 output = config['output']
@@ -47,23 +48,29 @@ def smart_sleep(delay):
 			sleep(1)
 		center('Sleeping for {} seconds complete!'.format(str(delay)))
 
-def test_proxy(proxy, site):
-	headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36'}
+def format_proxy(proxy):
 	try:
 		proxy_parts = proxy.split(':')
 		ip, port, username, password = proxy_parts[0], proxy_parts[1], proxy_parts[2], proxy_parts[3]
-		proxies = {
+		return {
 			'http': 'http://{}:{}@{}:{}'.format(username, password, ip, port),
 			'https': 'https://{}:{}@{}:{}'.format(username, password, ip, port)
 		}
 	except IndexError:
-		proxies = {'http': 'http://' + proxy, 'https': 'https://' + proxy}
+		if 'socks' in proxy:
+			return {'http': proxy, 'https': proxy}
+		else:
+			return {'http': 'http://' + proxy, 'https': 'https://' + proxy}
+
+def test_proxy(proxy, site):
+	headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36'}
+	proxies = format_proxy(proxy)
 	try:
 		with eventlet.Timeout(timeout):
 			try:
 				response = requests.get(site, headers=headers, proxies=proxies)
 				return True
-			except requests.exceptions.RequestException:
+			except (requests.exceptions.RequestException, RecursionError):
 				return False
 	except eventlet.timeout.Timeout:
 		return False
@@ -74,12 +81,8 @@ def header():
 	center('-', '-')
 
 def gather_proxies(site):
-	if site == 'https://www.us-proxy.org/':
-		return gather_us_proxy(site)
-
-def gather_us_proxy(site):
 	headers = {
-		'authority': 'www.us-proxy.org',
+		'authority': proxy_sites[site],
 		'upgrade-insecure-requests': '1',
 		'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36',
 		'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
@@ -87,20 +90,31 @@ def gather_us_proxy(site):
 		'accept-language': 'en-US,en;q=0.9',
 	}
 	try:
-		response = requests.get('https://www.us-proxy.org/', headers=headers)
+		response = requests.get(site, headers=headers)
 	except requests.exceptions.RequestException:
 		return []
+	if any(item == site for item in free_proxy_list):
+		return gather_free_proxy_list(response)
+	elif site == 'https://www.socks-proxy.net/':
+		return gather_free_proxy_list(response, True)
+
+def gather_free_proxy_list(response, socks=False):
 	soup = BeautifulSoup(response.content, 'html.parser')
 	table = [item.get_text() for item in soup.find_all('tbody')[0].find_all('td')]
 	addresses = table[::8]
 	ports = table[1::8]
-	return ['{}:{}'.format(address, port) for address, port in zip(addresses, ports)]
+	if socks:
+		versions = table[4::8]
+		return ['{}://{}:{}'.format(version.lower(), address, port) for address, port, version in zip(addresses, ports, versions)]
+	else:
+		return ['{}:{}'.format(address, port) for address, port in zip(addresses, ports)]
 
 header()
 proxies = []
 print('{}\r'.format(center('Gathering proxies...', display=False)), end='')
-for site in proxy_sites:
+for site in proxy_sites.keys():
 	proxies.extend(gather_proxies(site))
+proxies = list(set(proxies))
 if proxies:
 	if len(proxies) == 1:
 		center('Successfully gathered 1 proxy :(')
@@ -111,8 +125,9 @@ if proxies:
 	for i in range(0, len(proxies)):
 		if len(valid_proxies) == total_proxies:
 			break
-		if test_proxy(proxies[i], test_site):
-			valid_proxies.append(proxies[i])
+		if proxies[i] not in valid_proxies:
+			if test_proxy(proxies[i], test_site):
+				valid_proxies.append(proxies[i])
 		if len(valid_proxies) == 1:
 			print('{}\r'.format(center('[{}/{}] Gathered 1 valid proxy...'.format(str(i + 1), str(len(proxies))), display=False)), end='')
 		else:

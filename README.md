@@ -1,6 +1,6 @@
 # Proxy Scraper
 
-A simple program to scrape US proxies from various sites.
+A simple program to scrape proxies from various sites.
 
 ## Getting Started
 
