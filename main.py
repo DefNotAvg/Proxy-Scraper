@@ -104,7 +104,7 @@ def gather_proxies(site):
 
 def gather_free_proxy_list(response, socks=False):
 	soup = BeautifulSoup(response.content, 'html.parser')
-	table = [item.get_text() for item in soup.find_all('tbody')[0].find_all('td')]
+	table = [item.get_text() for item in soup.find('tbody').find_all('td')]
 	addresses = table[::8]
 	ports = table[1::8]
 	if socks:
@@ -116,7 +116,7 @@ def gather_free_proxy_list(response, socks=False):
 def gather_proxy_daily(response):
 	result = []
 	soup = BeautifulSoup(response.content, 'html.parser')
-	tables = [item.get_text() for item in soup.find_all('div') if item.get('style') and item.get('style').startswith('border-radius:10px;white-space')]
+	tables = [item.get_text() for item in soup.find_all('div') if item.get('class') and ' '.join(item.get('class')) == 'centeredProxyList freeProxyStyle']
 	for i in range(0, len(tables)):
 		table = tables[i]
 		if i == 0:
